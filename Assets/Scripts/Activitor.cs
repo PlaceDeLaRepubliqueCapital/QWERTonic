@@ -1,7 +1,5 @@
 using UnityEngine;
 using System.Collections;
-using System.Runtime.InteropServices;
-
 
 public class Activitor : MonoBehaviour
 {
@@ -12,17 +10,9 @@ public class Activitor : MonoBehaviour
     public AudioClip sound2;
     AudioSource audioSource;
     bool isSustaining = false;
-    //bool keyDown = false;
-    //int keyPressCount = 0;
     float originalVolume;
-    //[DllImport("user32.dll")]
-    //public static extern short GetKeyState(int keyCode);
-    //bool isCapsLockOn = false;
+    Color activeColor = new Color(0.5f, 0.83f, 0.99f, 0.5f); // Define active color here
 
-    /*void Start()
-    {
-        isCapsLockOn = (((ushort)GetKeyState(0x14)) & 0xffff) != 0;//init stat
-    }*/
     void Awake()
     {
         sr = GetComponent<SpriteRenderer>();
@@ -31,32 +21,28 @@ public class Activitor : MonoBehaviour
         originalVolume = audioSource.volume; // Store the original volume
     }
 
-    // ... (existing code)
-
     void Update()
     {
         if (Input.GetKeyDown(key))
         {
+            sr.color = activeColor; // Set the active color for key press
+
             if (Input.GetKey(KeyCode.LeftShift))
             {
                 // Play sound2
                 PlaySound(sound2);
-                sr.color = new Color(0.5f, 0.83f, 0.99f, 0.5f); // Use normalized float values for color
             }
             else
             {
                 // Play sound1
-                //keyPressCount++;
                 PlaySound(sound1);
-                sr.color = new Color(0.5f, 0.83f, 0.99f, 0.5f); // Use normalized float values for color
             }
         }
         else if (Input.GetKeyUp(key) && !isSustaining)
         {
-            // Stop the audio
+            // Stop the audio with fade out
             StopWithFadeOut(0.07f);
             sr.color = originalColor;
-            //keyPressCount = 0;
         }
 
         if (Input.GetKeyDown(KeyCode.Space))
@@ -66,54 +52,26 @@ public class Activitor : MonoBehaviour
         else if (Input.GetKeyUp(KeyCode.Space))
         {
             isSustaining = false;
-            if (!Input.anyKey) // Use Input.anyKey for efficient key state checking
+            if (!Input.anyKey)
             {
                 StopWithFadeOut(0.07f);
                 sr.color = originalColor;
-                //keyPressCount = 0;
             }
         }
-
-        /*
-        if (isCapsLockOn)
-        {
-            isSustaining = true;
-        }
-        else if (!isCapsLockOn)
-        {
-            isSustaining = false;
-            if (!Input.anyKey) // Use Input.anyKey for efficient key state checking
-            {
-                StopWithFadeOut(0.07f);
-                sr.color = originalColor;
-                //keyPressCount = 0;
-            }
-        }
-        
-        if (Input.GetKeyDown(KeyCode.CapsLock))
-        {
-            isCapsLockOn = !isCapsLockOn;
-            //......
-        }
-
-        if (Input.GetKeyDown(key))
-        {
-            keyDown = true;
-            // Rest of your code
-        }
-        else if (Input.GetKeyUp(key))
-        {
-            keyDown = false;
-            // Rest of your code
-        }*/
     }
-
-    // ... (existing code)
 
     void PlaySound(AudioClip clip)
     {
-        audioSource.clip = clip;
-        audioSource.Play();
+        // Check if AudioClip is assigned before playing
+        if (clip != null)
+        {
+            audioSource.clip = clip;
+            audioSource.Play();
+        }
+        else
+        {
+            Debug.LogWarning("AudioClip is not assigned.");
+        }
     }
 
     void StopWithFadeOut(float fadeDuration)
@@ -123,7 +81,14 @@ public class Activitor : MonoBehaviour
 
     IEnumerator FadeOut(float duration, float originalVolume)
     {
-        //float startVolume = audioSource.volume;
+        // Check for zero or negative duration to avoid issues
+        if (duration <= 0)
+        {
+            audioSource.volume = 0;
+            audioSource.Stop();
+            audioSource.volume = originalVolume; // Reset volume to original after stop
+            yield break;
+        }
 
         while (audioSource.volume > 0)
         {
