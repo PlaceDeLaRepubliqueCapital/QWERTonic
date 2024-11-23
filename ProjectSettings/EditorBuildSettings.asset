@@ -17,7 +17,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Passacaglia/Passacaglia.unity
     guid: 9ee8f489839357041aa6650b95e5fa77
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/CrazyFrog/CrazyFrog.unity
     guid: 8e34033fe0c42a94b98ad7a3254973d4
   - enabled: 1

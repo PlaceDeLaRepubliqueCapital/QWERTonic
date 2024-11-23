@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+
 public class Notation : MonoBehaviour
 {
     public KeyCode[] requiredKeys;
     public GameObject[] nextObjects;
 
-    bool activated = false;
-
-    Dictionary<GameObject, bool> activationStates = new Dictionary<GameObject, bool>();
+    private bool activated = false;
+    private Dictionary<GameObject, bool> activationStates = new Dictionary<GameObject, bool>();
 
     void Start()
     {
@@ -16,14 +16,15 @@ public class Notation : MonoBehaviour
         {
             foreach (GameObject obj in nextObjects)
             {
-                obj.SetActive(false); // Ensure the next objects are initially hidden
-                activationStates[obj] = false; // Initialize the activation state for each nextObject
+                obj.SetActive(false);
+                activationStates[obj] = false;
             }
         }
     }
 
     void Update()
     {
+        // Handle chord/key detection
         if (!activated && CheckKeysPressed())
         {
             activated = true;
@@ -31,13 +32,13 @@ public class Notation : MonoBehaviour
             {
                 foreach (GameObject obj in nextObjects)
                 {
-                    if (!activationStates[obj] && CheckKeysPressedForNextObject(obj))
+                    if (!activationStates[obj])
                     {
-                        activationStates[obj] = true; // Update the activation state for the nextObject
-                        obj.SetActive(true); // Show the next object
+                        activationStates[obj] = true;
+                        obj.SetActive(true);
                     }
                 }
-                gameObject.SetActive(false); // Hide the current object
+                gameObject.SetActive(false);
             }
         }
     }
@@ -46,46 +47,26 @@ public class Notation : MonoBehaviour
     {
         if (requiredKeys.Length == 1)
         {
-            return Input.GetKeyDown(requiredKeys[0]); // Return true if the single required key is pressed
+            return Input.GetKeyDown(requiredKeys[0]);
         }
-        else
+
+        // For chords (multiple keys)
+        bool anyKeyDown = false;
+        bool allKeysHeld = true;
+
+        // Check if any key was just pressed down and all required keys are held
+        foreach (KeyCode key in requiredKeys)
         {
-            bool[] keysPressed = new bool[requiredKeys.Length]; // Create an array to track the state of each required key
-
-            for (int i = 0; i < requiredKeys.Length; i++)
+            if (Input.GetKeyDown(key))
             {
-                keysPressed[i] = Input.GetKey(requiredKeys[i]); // Check if each required key is pressed
-                Debug.Log("Key " + requiredKeys[i] + " pressed: " + keysPressed[i]); // Add debug log
+                anyKeyDown = true;
             }
-
-            return Array.TrueForAll(keysPressed, x => x); // Return true if all required keys are pressed
+            if (!Input.GetKey(key))
+            {
+                allKeysHeld = false;
+            }
         }
+
+        return anyKeyDown && allKeysHeld;
     }
-    bool CheckKeysPressedForNextObject(GameObject obj)
-    {
-        if (requiredKeys.Length == 1)
-        {
-            return Input.GetKeyDown(requiredKeys[0]); // Return true if the single required key is pressed
-        }
-        else
-        {
-            if (!activationStates[obj])
-            {
-                bool[] keysPressed = new bool[requiredKeys.Length]; // Create an array to track the state of each required key
-
-                for (int i = 0; i < requiredKeys.Length; i++)
-                {
-                    keysPressed[i] = Input.GetKey(requiredKeys[i]); // Check if each required key is pressed
-                    Debug.Log("Key " + requiredKeys[i] + " pressed: " + keysPressed[i]); // Add debug log
-                }
-
-                return Array.TrueForAll(keysPressed, x => x); // Return true if all required keys are pressed
-            }
-            else
-            {
-                return false; // Return false if the nextObject is already activated
-            }
-        }
-    }
-
 }
