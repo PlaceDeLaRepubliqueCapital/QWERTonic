@@ -3,6 +3,7 @@ using UnityEditor;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 using System.Linq;
+using System;
 
 
 public class NotationSystemEditor : EditorWindow
@@ -26,7 +27,7 @@ public class NotationSystemEditor : EditorWindow
         {"C2", KeyCode.Alpha7}, {"C#2", KeyCode.U}, {"D2", KeyCode.Alpha8},
         {"D#2", KeyCode.I}, {"E2", KeyCode.Alpha9}, {"F2", KeyCode.O},
         {"F#2", KeyCode.Alpha0}, {"G2", KeyCode.P}, {"G#2", KeyCode.Minus},
-        {"A2", KeyCode.LeftBracket}, {"A#2", KeyCode.Plus}, {"B2", KeyCode.RightBracket},
+        {"A2", KeyCode.LeftBracket}, {"A#2", KeyCode.Equals}, {"B2", KeyCode.RightBracket},
         {"C3", KeyCode.A}, {"C#3", KeyCode.Z}, {"D3", KeyCode.S},
         {"D#3", KeyCode.X}, {"E3", KeyCode.D}, {"F3", KeyCode.C},
         {"F#3", KeyCode.F}, {"G3", KeyCode.V}, {"G#3", KeyCode.G},
@@ -174,40 +175,43 @@ public class NotationSystemEditor : EditorWindow
                     // For each note in the chord, instantiate its prefab
                     foreach (string note in notes)
                     {
-                        string trimmedNote = note.Trim();
-                        if (notePrefabsContainer != null)
+                        string trimmedNote = StandardizeNoteName(note);
+                        Debug.Log($"Looking for note prefab: {trimmedNote}");
+
+                        if (notePrefabsContainer == null)
                         {
-                            Transform notePrefab = notePrefabsContainer.transform.Find(trimmedNote);
-                            if (notePrefab != null)
+                            Debug.LogError("Note Prefabs Container is null!");
+                            continue;
+                        }
+
+                        Transform notePrefab = FindNotePrefab(trimmedNote);
+                        if (notePrefab != null)
+                        {
+                            // Create the instance as a direct child of the note object
+                            GameObject prefabInstance = GameObject.Instantiate(notePrefab.gameObject);
+                            if (prefabInstance != null)
                             {
-                                GameObject prefabInstance = GameObject.Instantiate(notePrefab.gameObject);
-                                if (prefabInstance != null)
-                                {
-                                    Undo.RegisterCreatedObjectUndo(prefabInstance, "Create Note Prefab Instance");
+                                Undo.RegisterCreatedObjectUndo(prefabInstance, "Create Note Prefab Instance");
 
-                                    // Parent to note object
-                                    prefabInstance.transform.SetParent(noteObject.transform);
-                                    prefabInstance.name = trimmedNote;
+                                prefabInstance.transform.SetParent(noteObject.transform);
+                                prefabInstance.name = trimmedNote;
 
-                                    // Get original position and modify it
-                                    Vector3 originalPosition = notePrefab.localPosition;
-                                    prefabInstance.transform.localPosition = new Vector3(
-                                        originalPosition.x + 27f,
-                                        originalPosition.y + 308f,
-                                        originalPosition.z
-                                    );
+                                Vector3 prefabLocalPos = notePrefab.localPosition;
+                                prefabInstance.transform.localPosition = new Vector3(
+                                    prefabLocalPos.x + 27f,
+                                    prefabLocalPos.y + 308f,
+                                    prefabLocalPos.z
+                                );
 
-                                    // Keep original rotation and scale
-                                    prefabInstance.transform.localRotation = notePrefab.localRotation;
-                                    prefabInstance.transform.localScale = notePrefab.localScale;
+                                prefabInstance.transform.localRotation = notePrefab.localRotation;
+                                prefabInstance.transform.localScale = notePrefab.localScale;
 
-                                    Debug.Log($"Created prefab instance for note: {trimmedNote} in chord under {noteObject.name}");
-                                }
+                                Debug.Log($"Successfully created prefab instance for note: {trimmedNote} under {noteObject.name}");
                             }
-                            else
-                            {
-                                Debug.LogError($"Could not find note prefab {trimmedNote} in Notes prefab");
-                            }
+                        }
+                        else
+                        {
+                            Debug.LogError($"Could not find note prefab for '{trimmedNote}' after trying all search methods");
                         }
                     }
 
@@ -237,25 +241,43 @@ public class NotationSystemEditor : EditorWindow
         }
     }
 
-    // Remove the FindNotePrefab method as we're now handling prefab finding directly in GenerateNotationSystem
-    /*
-        private GameObject FindNotePrefab(string noteName)
+    private Transform FindNotePrefab(string noteName)
+    {
+        if (notePrefabsContainer == null) return null;
+
+        // Try direct find first
+        Transform prefab = notePrefabsContainer.transform.Find(noteName);
+        if (prefab != null) return prefab;
+
+        // If not found, try alternative sharp symbol
+        string alternateNoteName = noteName.Contains("#")
+            ? noteName.Replace("#", "♯")
+            : noteName.Replace("♯", "#");
+
+        prefab = notePrefabsContainer.transform.Find(alternateNoteName);
+        if (prefab != null) return prefab;
+
+        // If still not found, try searching all children
+        foreach (Transform child in notePrefabsContainer.transform)
         {
-            if (notePrefabsContainer == null)
+            if (string.Equals(child.name, noteName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(child.name, alternateNoteName, StringComparison.OrdinalIgnoreCase))
             {
-                Debug.LogError("Note Prefabs Container is not assigned!");
-                return null;
+                return child;
             }
-
-            // Find the child with matching name
-            Transform prefabTransform = notePrefabsContainer.transform.Find(noteName);
-            if (prefabTransform == null)
-            {
-                Debug.LogError($"Could not find prefab for note: {noteName}");
-                return null;
-            }
-
-            return prefabTransform.gameObject;
         }
-    */
+
+        // Debug information - fixed string interpolation
+        Debug.LogError("Searching for note: '" + noteName + "' or '" + alternateNoteName + "'");
+        string availablePrefabs = string.Join(", ", notePrefabsContainer.transform.Cast<Transform>().Select(t => t.name));
+        Debug.LogError("Available prefabs: " + availablePrefabs);
+
+        // Also print each prefab name with its length to check for hidden characters
+        foreach (Transform child in notePrefabsContainer.transform)
+        {
+            Debug.LogError($"Prefab: '{child.name}' (Length: {child.name.Length})");
+        }
+
+        return null;
+    }
 }
